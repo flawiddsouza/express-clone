@@ -1,0 +1,12 @@
+{
+    "name": "express-clone",
+    "private": true,
+    "version": "0.0.1",
+    "description": "A lightweight drop-in replacement for express. Limited feature set.",
+    "main": "server.js",
+    "type": "module",
+    "dependencies": {
+        "path-to-regexp": "^6.2.0"
+    },
+    "license": "MIT"
+}
