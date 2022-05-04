@@ -1,4 +1,4 @@
-import { createServer } from 'http'
+import { createServer, METHODS } from 'http'
 import { pathToRegexp, match, parse, compile } from 'path-to-regexp'
 
 function bodyParser(request) {
@@ -95,6 +95,9 @@ function responseWrapper(response) {
         },
         end(...params) {
             response.end(...params)
+        },
+        setHeader(...params) {
+            response.setHeader(...params)
         }
     }
 }
@@ -102,21 +105,40 @@ function responseWrapper(response) {
 class App {
     constructor() {
         this.routes = [];
+        this.middleware = []
     }
 
-    get(path, callback) {
+    use(callback) {
+        this.middleware.push(callback)
+    }
+
+    addRoute(method, path, callback) {
         this.routes.push({
-            method: 'GET',
+            method: method.toUpperCase(),
             path: path,
             callback: callback
         })
     }
 
-    post(path, callback) {
+    addRoute(method, ...args) {
+        const path = args[0]
+        let middleware = []
+        let callback = null
+
+        if(args.length === 2) {
+            callback = args[1]
+        }
+
+        if(args.length === 3) {
+            middleware = args[1]
+            callback = args[2]
+        }
+
         this.routes.push({
-            method: 'POST',
+            method: method.toUpperCase(),
             path: path,
-            callback: callback
+            callback: callback,
+            middleware: Array.isArray(middleware) ? middleware : [middleware]
         })
     }
 
@@ -136,7 +158,14 @@ class App {
             if('params' in route) {
                 request.params = route.params
             }
-            route.callback(request, response)
+            let callbackStack = []
+            callbackStack.push(() => route.callback(request, response))
+            const middleware = [...this.middleware, ...route.middleware]
+            for(let i=middleware.length - 1; i>= 0; i--) {
+                const callback = callbackStack.pop()
+                callbackStack.push(() => middleware[i](request, response, callback))
+            }
+            callbackStack[0]()
         })
 
         if(routesToActOn.length === 0) {
@@ -163,6 +192,12 @@ class App {
         server.listen(port, callback)
     }
 }
+
+METHODS.forEach(method => {
+    App.prototype[method.toLowerCase()] = function(...args) {
+        return this.addRoute(method, ...args)
+    }
+})
 
 export default () => {
     return new App
