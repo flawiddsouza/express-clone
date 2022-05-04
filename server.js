@@ -170,16 +170,14 @@ class App {
             // global middleware should still run even if there are no routes to act on
             const middleware = [...this.middleware]
             let callbackStack = []
-            callbackStack.push(() => middleware.pop()(request, response))
+            callbackStack.push(() => {
+                response.status(404).send(`Cannot ${request.method} ${request.path}`)
+            })
             for(let i=middleware.length - 1; i>= 0; i--) {
                 const callback = callbackStack.pop()
                 callbackStack.push(() => middleware[i](request, response, callback))
             }
             callbackStack[0]()
-        }
-
-        if(this.middleware.length === 0 && routesToActOn.length === 0) {
-            response.status(404).send(`Cannot ${request.method} ${request.path}`)
         }
     }
 
