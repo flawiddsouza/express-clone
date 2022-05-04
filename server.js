@@ -1,5 +1,5 @@
 import { createServer, METHODS } from 'http'
-import { pathToRegexp, match, parse, compile } from 'path-to-regexp'
+import { match } from 'path-to-regexp'
 
 function bodyParser(request) {
     if(request.get('Content-Type') === 'application/x-www-form-urlencoded') {
@@ -42,10 +42,13 @@ function requestWrapper(request) {
             return request.headers.host
         },
         get originalUrl() {
+            return request.originalUrl
+        },
+        get url() {
             return request.url
         },
         get parsedUrl() {
-            return new URL(this.originalUrl, `${this.protocol}://${this.hostname}`)
+            return new URL(this.url, `${this.protocol}://${this.hostname}`)
         },
         // Contains the path part of the request URL.
         get path() {
@@ -72,39 +75,34 @@ function requestWrapper(request) {
 }
 
 function responseWrapper(response) {
-    return {
-        // Sets the HTTP status for the response. It is a chainable alias of Node's response.statusCode.
-        status(code) {
-            response.statusCode = code
-            return this
-        },
-        // Sends the HTTP response.
-        // The body parameter can be a String, an object, Boolean, or an Array.
-        send(body) {
-            if(typeof body === 'string') {
-                response.end(body)
-            }
+    // Sets the HTTP status for the response. It is a chainable alias of Node's response.statusCode.
+    response.status = (code) => {
+        response.statusCode = code
+        return response
+    }
 
-            if(typeof body === 'object') {
-                response.end(JSON.stringify(body))
-            }
+    // Sends the HTTP response.
+    // The body parameter can be a String, an object, Boolean, or an Array.
+    response.send = (body) => {
+        if(typeof body === 'string') {
+            response.end(body)
+        }
 
-            if(typeof body === 'undefined') {
-                response.end()
-            }
-        },
-        end(...params) {
-            response.end(...params)
-        },
-        setHeader(...params) {
-            response.setHeader(...params)
+        if(typeof body === 'object') {
+            response.end(JSON.stringify(body))
+        }
+
+        if(typeof body === 'undefined') {
+            response.end()
         }
     }
+
+    return response
 }
 
 class App {
     constructor() {
-        this.routes = [];
+        this.routes = []
         this.middleware = []
     }
 
@@ -154,21 +152,33 @@ class App {
             }
         })
 
-        routesToActOn.forEach(route => {
-            if('params' in route) {
-                request.params = route.params
-            }
+        if(routesToActOn.length > 0) {
+            routesToActOn.forEach(route => {
+                if('params' in route) {
+                    request.params = route.params
+                }
+                let callbackStack = []
+                callbackStack.push(() => route.callback(request, response))
+                const middleware = [...this.middleware, ...route.middleware]
+                for(let i=middleware.length - 1; i>= 0; i--) {
+                    const callback = callbackStack.pop()
+                    callbackStack.push(() => middleware[i](request, response, callback))
+                }
+                callbackStack[0]()
+            })
+        } else {
+            // global middleware should still run even if there are no routes to act on
+            const middleware = [...this.middleware]
             let callbackStack = []
-            callbackStack.push(() => route.callback(request, response))
-            const middleware = [...this.middleware, ...route.middleware]
+            callbackStack.push(() => middleware.pop()(request, response))
             for(let i=middleware.length - 1; i>= 0; i--) {
                 const callback = callbackStack.pop()
                 callbackStack.push(() => middleware[i](request, response, callback))
             }
             callbackStack[0]()
-        })
+        }
 
-        if(routesToActOn.length === 0) {
+        if(this.middleware.length === 0 && routesToActOn.length === 0) {
             response.status(404).send(`Cannot ${request.method} ${request.path}`)
         }
     }
