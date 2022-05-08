@@ -1,6 +1,7 @@
 import { createServer, METHODS } from 'http'
 import { match } from 'path-to-regexp'
 import { createReadStream } from 'fs'
+import serveStatic from 'serve-static'
 
 function bodyParser(request) {
     if(request.get('Content-Type') === 'application/x-www-form-urlencoded') {
@@ -245,6 +246,10 @@ METHODS.forEach(method => {
     }
 })
 
-export default () => {
+const appFunc = () => {
     return new App
 }
+
+appFunc.static = serveStatic
+
+export default appFunc
