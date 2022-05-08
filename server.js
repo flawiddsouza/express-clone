@@ -121,6 +121,39 @@ function responseWrapper(response, request) {
     return response
 }
 
+function handleRoute(request, response, middleware, route) {
+    if(route) {
+        middleware = [...middleware, ...route.middleware]
+    }
+    let callbackStack = []
+    if(route) {
+        callbackStack.push(() => route.callback(request, response))
+    } else {
+        callbackStack.push((...args) => {
+            if(args.length === 1 && args[0] instanceof Error) {
+                response.status(500).send(args[0])
+            }
+            response.status(404).send(`Cannot ${request.method} ${request.path}`)
+        })
+    }
+    for(let i=middleware.length - 1; i>= 0; i--) {
+        const callback = callbackStack.pop()
+        function next(...args) {
+            if(args.length === 1 && args[0] instanceof Error) {
+                response.status(500).send(args[0])
+            } else {
+                callback(...args)
+            }
+        }
+        if(request.path.startsWith(middleware[i].root)) {
+            callbackStack.push(() => middleware[i].callback(request, response, next))
+        } else {
+            callbackStack.push(next)
+        }
+    }
+    callbackStack[0]()
+}
+
 class App {
     constructor() {
         this.routes = []
@@ -187,35 +220,11 @@ class App {
                 if('params' in route) {
                     request.params = route.params
                 }
-                let callbackStack = []
-                callbackStack.push(() => route.callback(request, response))
-                const middleware = [...this.middleware, ...route.middleware]
-                for(let i=middleware.length - 1; i>= 0; i--) {
-                    const callback = callbackStack.pop()
-                    if(request.path.startsWith(middleware[i].root)) {
-                        callbackStack.push(() => middleware[i].callback(request, response, callback))
-                    } else {
-                        callbackStack.push(callback)
-                    }
-                }
-                callbackStack[0]()
+                handleRoute(request, response, this.middleware, route)
             })
         } else {
             // global middleware should still run even if there are no routes to act on
-            const middleware = [...this.middleware]
-            let callbackStack = []
-            callbackStack.push(() => {
-                response.status(404).send(`Cannot ${request.method} ${request.path}`)
-            })
-            for(let i=middleware.length - 1; i>= 0; i--) {
-                const callback = callbackStack.pop()
-                if(request.path.startsWith(middleware[i].root)) {
-                    callbackStack.push(() => middleware[i].callback(request, response, callback))
-                } else {
-                    callbackStack.push(callback)
-                }
-            }
-            callbackStack[0]()
+            handleRoute(request, response, this.middleware)
         }
     }
 
