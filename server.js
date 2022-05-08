@@ -1,5 +1,6 @@
 import { createServer, METHODS } from 'http'
 import { match } from 'path-to-regexp'
+import { createReadStream } from 'fs'
 
 function bodyParser(request) {
     if(request.get('Content-Type') === 'application/x-www-form-urlencoded') {
@@ -74,7 +75,9 @@ function requestWrapper(request) {
     }
 }
 
-function responseWrapper(response) {
+import { addSetAndHeaderToResponse, addLocationToResponse, addRedirectToResponse, addClearCookieToResponse, addCookieToResponse, addAppendToResponse } from './helpers.js'
+
+function responseWrapper(response, request) {
     // Sets the HTTP status for the response. It is a chainable alias of Node's response.statusCode.
     response.status = (code) => {
         response.statusCode = code
@@ -96,6 +99,23 @@ function responseWrapper(response) {
             response.end()
         }
     }
+
+    response.sendFile = (path) => {
+        createReadStream(path).pipe(response)
+    }
+
+    response.req = request
+
+    response.get = (field) => {
+        return response.getHeader(field)
+    }
+
+    addSetAndHeaderToResponse(response)
+    addLocationToResponse(response)
+    addRedirectToResponse(response)
+    addAppendToResponse(response)
+    addCookieToResponse(response)
+    addClearCookieToResponse(response)
 
     return response
 }
@@ -210,7 +230,8 @@ class App {
                 if(data) {
                     request.rawBody = data
                 }
-                this.requestHandler(requestWrapper(request), responseWrapper(response))
+                const wrappedRequest = requestWrapper(request)
+                this.requestHandler(wrappedRequest, responseWrapper(response, wrappedRequest))
             })
         })
 

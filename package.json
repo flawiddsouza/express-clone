@@ -6,7 +6,11 @@
     "main": "server.js",
     "type": "module",
     "dependencies": {
-        "path-to-regexp": "^6.2.0"
+        "cookie": "^0.5.0",
+        "encodeurl": "^1.0.2",
+        "path-to-regexp": "^6.2.0",
+        "statuses": "^2.0.1",
+        "utils-merge": "^1.0.1"
     },
     "license": "MIT",
     "devDependencies": {
