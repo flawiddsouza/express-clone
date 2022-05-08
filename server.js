@@ -131,7 +131,9 @@ function handleRoute(request, response, middleware, route) {
     } else {
         callbackStack.push((...args) => {
             if(args.length === 1 && args[0] instanceof Error) {
-                response.status(500).send(args[0])
+                const error = 'Error: ' + args[0].message
+                console.error(error)
+                response.status(500).send(error)
             }
             response.status(404).send(`Cannot ${request.method} ${request.path}`)
         })
@@ -140,7 +142,9 @@ function handleRoute(request, response, middleware, route) {
         const callback = callbackStack.pop()
         function next(...args) {
             if(args.length === 1 && args[0] instanceof Error) {
-                response.status(500).send(args[0])
+                const error = 'Error: ' + args[0].message
+                console.error(error)
+                response.status(500).send(error)
             } else {
                 callback(...args)
             }
