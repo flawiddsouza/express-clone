@@ -106,8 +106,17 @@ class App {
         this.middleware = []
     }
 
-    use(callback) {
-        this.middleware.push(callback)
+    use(...args) {
+        let root = '/'
+        let callback = null
+        if(args.length === 1) {
+            callback = args[0]
+        }
+        if(args.length === 2) {
+            root = args[0]
+            callback = args[1]
+        }
+        this.middleware.push({ root, callback })
     }
 
     addRoute(method, path, callback) {
@@ -128,7 +137,7 @@ class App {
         }
 
         if(args.length === 3) {
-            middleware = args[1]
+            middleware = { root: path, callback: args[1] }
             callback = args[2]
         }
 
@@ -162,7 +171,11 @@ class App {
                 const middleware = [...this.middleware, ...route.middleware]
                 for(let i=middleware.length - 1; i>= 0; i--) {
                     const callback = callbackStack.pop()
-                    callbackStack.push(() => middleware[i](request, response, callback))
+                    if(request.path.startsWith(middleware[i].root)) {
+                        callbackStack.push(() => middleware[i].callback(request, response, callback))
+                    } else {
+                        callbackStack.push(callback)
+                    }
                 }
                 callbackStack[0]()
             })
@@ -175,7 +188,11 @@ class App {
             })
             for(let i=middleware.length - 1; i>= 0; i--) {
                 const callback = callbackStack.pop()
-                callbackStack.push(() => middleware[i](request, response, callback))
+                if(request.path.startsWith(middleware[i].root)) {
+                    callbackStack.push(() => middleware[i].callback(request, response, callback))
+                } else {
+                    callbackStack.push(callback)
+                }
             }
             callbackStack[0]()
         }
