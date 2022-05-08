@@ -24,6 +24,17 @@ function bodyParser(request) {
 }
 
 function requestWrapper(request) {
+    // keep copy of actual request url in originalUrl
+    request.originalUrl = request.url
+    request.baseUrl = '/'
+
+    const protocol = request.connection && request.connection.encrypted ? 'https' : 'http'
+    const hostname = request.headers.host
+    const parsedUrl = new URL(request.originalUrl, `${protocol}://${hostname}`)
+    const path = parsedUrl.pathname
+
+    request.url = path
+
     return {
         get headers() {
             return request.headers
@@ -37,11 +48,11 @@ function requestWrapper(request) {
         },
         // Contains the request protocol string: either http or (for TLS requests) https.
         get protocol() {
-            return request.connection && request.connection.encrypted ? 'https' : 'http'
+            return protocol
         },
         // Contains the hostname derived from the Host HTTP header.
         get hostname() {
-            return request.headers.host
+            return hostname
         },
         get originalUrl() {
             return request.originalUrl
@@ -49,12 +60,15 @@ function requestWrapper(request) {
         get url() {
             return request.url
         },
+        set url(url) {
+            request.url = url
+        },
         get parsedUrl() {
-            return new URL(this.url, `${this.protocol}://${this.hostname}`)
+            return parsedUrl
         },
         // Contains the path part of the request URL.
         get path() {
-            return this.parsedUrl.pathname
+            return path
         },
         // This property is an object containing a property for each query string parameter in the route
         get query() {
@@ -150,6 +164,7 @@ function handleRoute(request, response, middleware, route) {
             }
         }
         if(request.path.startsWith(middleware[i].root)) {
+            request.url = request.path.replace(middleware[i].root, request.path.endsWith('/') === false ? '/' : '').replace('//', '/')
             callbackStack.push(() => middleware[i].callback(request, response, next))
         } else {
             callbackStack.push(next)
