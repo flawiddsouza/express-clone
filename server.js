@@ -137,7 +137,10 @@ function responseWrapper(response, request) {
 
 function handleRoute(request, response, middleware, route) {
     if(route) {
-        middleware = [...middleware, ...route.middleware]
+        middleware = [...middleware, ...route.middleware.map(item => {
+            item.root = request.path
+            return item
+        })]
     }
     let callbackStack = []
     if(route) {
