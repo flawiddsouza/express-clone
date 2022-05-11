@@ -9,7 +9,7 @@ function bodyParser(request) {
         let returnObject = {}
         fields.forEach(field => {
             let splitField = field.split('=')
-            returnObject[splitField[0]] = splitField[1]
+            returnObject[splitField[0]] = decodeURIComponent(splitField[1])
         })
         return returnObject
     }
