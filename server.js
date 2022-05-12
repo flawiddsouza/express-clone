@@ -2,6 +2,15 @@ import { createServer, METHODS } from 'http'
 import { match } from 'path-to-regexp'
 import { createReadStream } from 'fs'
 import serveStatic from 'serve-static'
+import {
+    addGetAndHeaderToRequest,
+    addSetAndHeaderToResponse,
+    addLocationToResponse,
+    addRedirectToResponse,
+    addClearCookieToResponse,
+    addCookieToResponse,
+    addAppendToResponse,
+} from './helpers.js'
 
 function bodyParser(request) {
     if(request.get('Content-Type') === 'application/x-www-form-urlencoded') {
@@ -35,16 +44,15 @@ function requestWrapper(request) {
 
     request.url = path
 
+    addGetAndHeaderToRequest(request)
+
     return {
         get headers() {
             return request.headers
         },
         // Returns the specified HTTP request header field (case-insensitive match). The Referrer and Referer fields are interchangeable.
         get(header) {
-            let headerLowerCased = header.toLowerCase()
-            if(headerLowerCased in this.headers) {
-                return this.headers[headerLowerCased]
-            }
+            return request.get(header)
         },
         // Contains the request protocol string: either http or (for TLS requests) https.
         get protocol() {
@@ -89,8 +97,6 @@ function requestWrapper(request) {
         }
     }
 }
-
-import { addSetAndHeaderToResponse, addLocationToResponse, addRedirectToResponse, addClearCookieToResponse, addCookieToResponse, addAppendToResponse } from './helpers.js'
 
 function responseWrapper(response, request) {
     // Sets the HTTP status for the response. It is a chainable alias of Node's response.statusCode.

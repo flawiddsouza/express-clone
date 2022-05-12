@@ -3,6 +3,53 @@ import statuses from 'statuses'
 import merge from 'utils-merge'
 import cookie from 'cookie'
 
+// From: https://github.com/expressjs/express/blob/508936853a6e311099c9985d4c11a4b1b8f6af07/lib/request.js#L40-L84
+export function addGetAndHeaderToRequest(request) {
+    /**
+    * Return request header.
+    *
+    * The `Referrer` header field is special-cased,
+    * both `Referrer` and `Referer` are interchangeable.
+    *
+    * Examples:
+    *
+    *     request.get('Content-Type');
+    *     // => "text/plain"
+    *
+    *     request.get('content-type');
+    *     // => "text/plain"
+    *
+    *     request.get('Something');
+    *     // => undefined
+    *
+    * Aliased as `request.header()`.
+    *
+    * @param {String} name
+    * @return {String}
+    * @public
+    */
+
+    request.get = request.header = function header(name) {
+        if (!name) {
+            throw new TypeError('name argument is required to req.get')
+        }
+
+        if (typeof name !== 'string') {
+            throw new TypeError('name must be a string to req.get')
+        }
+
+        var lc = name.toLowerCase()
+
+        switch (lc) {
+            case 'referer':
+            case 'referrer':
+                return this.headers.referrer || this.headers.referer
+            default:
+                return this.headers[lc]
+        }
+    }
+}
+
 // From: https://github.com/expressjs/express/blob/158a17031a2668269aedb31ea07b58d6b700272b/lib/response.js#L758-L801
 export function addSetAndHeaderToResponse(response) {
     /**
