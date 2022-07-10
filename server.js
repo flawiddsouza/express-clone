@@ -80,7 +80,7 @@ function requestWrapper(request) {
         },
         // This property is an object containing a property for each query string parameter in the route
         get query() {
-            return this.parsedUrl.searchParams
+            return Object.fromEntries(this.parsedUrl.searchParams)
         },
         // This property is an object containing properties mapped to the named route “parameters”. For example, if you have the route /user/:name, then the "name" property is available as req.params.name. This object defaults to {}.
         params: {},
