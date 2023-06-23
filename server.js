@@ -232,7 +232,22 @@ class App {
     }
 
     requestHandler(request, response) {
-        let routesToActOn = this.routes.filter(route => route.method === request.method).filter(route => {
+        let routesToActOn = this.routes.filter(route => {
+            if(route.method === request.method) {
+                return true
+            }
+
+            // express treats a HEAD request as GET
+            // https://github.com/expressjs/expressjs.com/issues/748
+            // See: https://expressjs.com/en/api.html#routing-methods, it reads:
+            // The app.get() function is automatically called for the HTTP HEAD method
+            // in addition to the GET method if app.head() was not called for the path before app.get().
+            if(route.method === 'GET' && request.method === 'HEAD') {
+                return true
+            }
+
+            return false
+        }).filter(route => {
             let routeMatches = match(route.path, { decode: decodeURIComponent })
             let result = routeMatches(request.path)
             if(result === false) {
